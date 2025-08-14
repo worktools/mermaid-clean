@@ -47,7 +47,7 @@ body {
   border: none;
   background-color: #1e1e1e;
   color: #d4d4d4;
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: Source Code Pro, 'Fira Code', 'Courier New', monospace;
   font-size: 16px;
   resize: none;
   outline: none;
@@ -73,9 +73,63 @@ body {
   align-items: center;
   justify-content: center;
   background-color: #fff;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+#preview:active {
+  cursor: grabbing;
+}
+
+.diagram-container {
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+  position: relative;
 }
 
 #preview svg {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
+}
+
+.zoom-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 1000;
+}
+
+.zoom-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.zoom-btn:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.zoom-reset {
+  font-size: 12px;
+  padding: 4px 0;
+  width: 50px;
+  height: 30px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
