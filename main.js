@@ -252,8 +252,23 @@ preview.addEventListener("wheel", (e) => {
   zoomAtSVGCenter(zoomFactor);
 });
 
-editor.value = initialDiagram;
+const STORAGE_KEY = "mermaid-clean-storage";
+
+const saveContent = () => {
+  localStorage.setItem(STORAGE_KEY, editor.value);
+};
+
+const savedContent = localStorage.getItem(STORAGE_KEY);
+editor.value = savedContent || initialDiagram;
 editor.addEventListener("input", renderMermaid);
+
+window.addEventListener("beforeunload", saveContent);
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    saveContent();
+  }
+});
 
 // Initial render
 renderMermaid();
