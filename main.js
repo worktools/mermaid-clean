@@ -52,8 +52,8 @@ const createZoomControls = () => {
 
   const zoomReset = document.createElement("button");
   zoomReset.className = "zoom-btn zoom-reset";
-  zoomReset.innerHTML = "100%";
-  zoomReset.title = "Reset Zoom";
+  zoomReset.innerHTML = "Fit";
+  zoomReset.title = "Fit to Screen";
 
   controls.appendChild(zoomIn);
   controls.appendChild(zoomOut);
@@ -139,11 +139,55 @@ const zoomOut = () => {
   zoomAtSVGCenter(1 / 1.2);
 };
 
-const resetZoom = () => {
-  viewState.scale = 1;
-  viewState.translation = complex(0, 0);
+const zoomToFit = () => {
+  const container = preview.querySelector(".diagram-container");
+  const svg = container?.querySelector("svg");
+  if (!svg || !container) {
+    // Fallback to a simple reset if something is wrong
+    viewState.scale = 1;
+    viewState.translation = complex(0, 0);
+    updateTransform();
+    updateZoomDisplay();
+    return;
+  }
+
+  const previewRect = preview.getBoundingClientRect();
+  const svgRect = svg.getBBox();
+
+  if (svgRect.width === 0 || svgRect.height === 0) {
+    // Fallback for empty diagram
+    viewState.scale = 1;
+    viewState.translation = complex(0, 0);
+    updateTransform();
+    updateZoomDisplay();
+    return;
+  }
+
+  const availableWidth = previewRect.width * 0.8; // 10% margin on each side
+  const availableHeight = previewRect.height * 0.8;
+
+  const scaleX = availableWidth / svgRect.width;
+  const scaleY = availableHeight / svgRect.height;
+
+  viewState.scale = Math.min(scaleX, scaleY);
+
+  // Center the diagram
+  const scaledSvgWidth = svgRect.width * viewState.scale;
+  const scaledSvgHeight = svgRect.height * viewState.scale;
+
+  const transX =
+    (previewRect.width - scaledSvgWidth) / 2 - svgRect.x * viewState.scale;
+  const transY =
+    (previewRect.height - scaledSvgHeight) / 2 - svgRect.y * viewState.scale;
+
+  viewState.translation = complex(transX, transY);
+
   updateTransform();
   updateZoomDisplay();
+};
+
+const resetZoom = () => {
+  zoomToFit();
 };
 
 const updateZoomDisplay = () => {
@@ -161,50 +205,51 @@ const renderMermaid = async () => {
 
   const hasContent = container.querySelector("svg");
 
-  // Fade out before rendering, only if there's already content
+  // Fade out before rendering
   if (hasContent) {
     container.style.opacity = 0;
-    // Wait for the transition to complete
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  if (!code) {
-    container.innerHTML = "";
-    errorContainer.textContent = "";
-    // Make sure it's visible if it was faded out
-    container.style.opacity = 1;
-    return;
-  }
+  // Disable transform transition for instant update
+  container.style.transition = "opacity 0.15s ease-in-out";
 
   try {
-    // First, validate the syntax
+    if (!code) {
+      container.innerHTML = "";
+      errorContainer.textContent = "";
+      return; // Exit here, finally will still run
+    }
+
     await mermaid.parse(code);
-
-    // If valid, render it
     const { svg } = await mermaid.render("graphDiv", code);
-
     container.innerHTML = svg;
     errorContainer.textContent = "";
 
-    // Apply current transform
-    updateTransform();
-    updateZoomDisplay();
-
-    // 如果是首次渲染（scale为1且translation为0），则自动居中显示
     if (
       viewState.scale === 1 &&
       viewState.translation.re === 0 &&
       viewState.translation.im === 0
     ) {
       resetZoom();
+    } else {
+      updateTransform();
     }
+    updateZoomDisplay();
   } catch (e) {
     errorContainer.textContent = e.str || e.message;
-    // Clear the container on error
     container.innerHTML = "";
   } finally {
-    // Fade in with the new content (or empty on error)
+    // Fade in with new content (or empty)
     container.style.opacity = 1;
+
+    // Restore transition for user interactions
+    setTimeout(() => {
+      if (container) {
+        container.style.transition =
+          "transform 0.1s ease-out, opacity 0.1s ease-in-out";
+      }
+    }, 100);
   }
 };
 
@@ -287,6 +332,8 @@ document.addEventListener("visibilitychange", () => {
     saveContent();
   }
 });
+
+window.addEventListener("resize", resetZoom);
 
 // Initial render
 renderMermaid();
