@@ -155,9 +155,24 @@ const updateZoomDisplay = () => {
 
 const renderMermaid = async () => {
   const code = editor.value;
+  const container = preview.querySelector(".diagram-container");
+
+  if (!container) return;
+
+  const hasContent = container.querySelector("svg");
+
+  // Fade out before rendering, only if there's already content
+  if (hasContent) {
+    container.style.opacity = 0;
+    // Wait for the transition to complete
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
   if (!code) {
-    preview.innerHTML = "";
+    container.innerHTML = "";
     errorContainer.textContent = "";
+    // Make sure it's visible if it was faded out
+    container.style.opacity = 1;
     return;
   }
 
@@ -168,26 +183,8 @@ const renderMermaid = async () => {
     // If valid, render it
     const { svg } = await mermaid.render("graphDiv", code);
 
-    // Create container with zoom controls
-    const {
-      controls,
-      zoomIn: zoomInBtn,
-      zoomOut: zoomOutBtn,
-      zoomReset: zoomResetBtn,
-    } = createZoomControls();
-
-    const container = document.createElement("div");
-    container.className = "diagram-container";
     container.innerHTML = svg;
-
-    preview.innerHTML = "";
-    preview.appendChild(controls);
-    preview.appendChild(container);
-
-    // Add event listeners for zoom controls
-    zoomInBtn.addEventListener("click", zoomIn);
-    zoomOutBtn.addEventListener("click", zoomOut);
-    zoomResetBtn.addEventListener("click", resetZoom);
+    errorContainer.textContent = "";
 
     // Apply current transform
     updateTransform();
@@ -201,10 +198,13 @@ const renderMermaid = async () => {
     ) {
       resetZoom();
     }
-
-    errorContainer.textContent = "";
   } catch (e) {
     errorContainer.textContent = e.str || e.message;
+    // Clear the container on error
+    container.innerHTML = "";
+  } finally {
+    // Fade in with the new content (or empty on error)
+    container.style.opacity = 1;
   }
 };
 
@@ -257,6 +257,24 @@ const STORAGE_KEY = "mermaid-clean-storage";
 const saveContent = () => {
   localStorage.setItem(STORAGE_KEY, editor.value);
 };
+
+// Create and append zoom controls and diagram container
+const {
+  controls,
+  zoomIn: zoomInBtn,
+  zoomOut: zoomOutBtn,
+  zoomReset: zoomResetBtn,
+} = createZoomControls();
+preview.appendChild(controls);
+
+const diagramContainer = document.createElement("div");
+diagramContainer.className = "diagram-container";
+preview.appendChild(diagramContainer);
+
+// Add event listeners for zoom controls
+zoomInBtn.addEventListener("click", zoomIn);
+zoomOutBtn.addEventListener("click", zoomOut);
+zoomResetBtn.addEventListener("click", resetZoom);
 
 const savedContent = localStorage.getItem(STORAGE_KEY);
 editor.value = savedContent || initialDiagram;
